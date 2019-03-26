@@ -11,3 +11,11 @@ It exposes a http endpoint:
 GET /
 
 GET /ping
+
+
+
+
+
+
+
+    mvn flyway:migrate -Dflyway.url=jdbc:postgresql://localhost/postgres -Dflyway.user=postgres -Dflyway.password=mysecretpassword

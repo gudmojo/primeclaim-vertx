@@ -66,6 +66,12 @@
       <version>1.0.13</version>
     </dependency>
     <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>42.1.4</version>
+    </dependency>
+
+    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-junit5</artifactId>
       <scope>test</scope>
@@ -137,6 +143,22 @@
             <argument>${main.verticle}</argument>
           </arguments>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <version>5.2.4</version>
+        <configuration>
+          <url>jdbc:h2:file:./target/foobar</url>
+          <user>sa</user>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>1.4.197</version>
+          </dependency>
+        </dependencies>
       </plugin>
     </plugins>
   </build>
