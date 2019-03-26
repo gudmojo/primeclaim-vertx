@@ -12,11 +12,16 @@ import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.SQLClient;
 import io.vertx.ext.sql.SQLConnection;
 import io.vertx.ext.web.Router;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MainVerticle extends AbstractVerticle {
 
+  public static final Logger LOGGER = LoggerFactory.getLogger(MainVerticle.class);
+
   @Override
   public void start(Future<Void> startFuture) throws Exception {
+
     JsonObject postgreSQLClientConfig = new JsonObject()
       .put("host", "localhost")
       .put("port", 5432)
@@ -42,7 +47,7 @@ public class MainVerticle extends AbstractVerticle {
 
         } else {
           // Failed to get connection - deal with it
-          System.out.println(res.cause());
+          LOGGER.error("Exception when getting connection", res.cause());
         }
       });
 
@@ -63,7 +68,7 @@ public class MainVerticle extends AbstractVerticle {
 
         } else {
           // Failed to get connection - deal with it
-          System.out.println(res.cause());
+          LOGGER.error("Exception when getting connection", res.cause());
         }
       });
 
@@ -73,7 +78,7 @@ public class MainVerticle extends AbstractVerticle {
     vertx.createHttpServer().requestHandler(router).listen(8888, http -> {
       if (http.succeeded()) {
         startFuture.complete();
-        System.out.println("HTTP server started on port 8888");
+        LOGGER.info("HTTP server started on port 8888");
       } else {
         startFuture.fail(http.cause());
       }
