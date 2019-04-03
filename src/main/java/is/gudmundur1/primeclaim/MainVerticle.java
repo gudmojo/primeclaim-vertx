@@ -160,7 +160,10 @@ public class MainVerticle extends AbstractVerticle {
           fail(routingContext);
           return;
         }
-        String sql = "select username, isadmin, apikey from appuser u left join apikey on u.id = userid where username = ?";
+        String sql =
+          "select username, isadmin, apikey " +
+            " from appuser u left join apikey on u.id = userid " +
+            " where username = ?";
         JsonArray params = new JsonArray();
         String username = routingContext.request().getParam("username");
         params.add(username);
