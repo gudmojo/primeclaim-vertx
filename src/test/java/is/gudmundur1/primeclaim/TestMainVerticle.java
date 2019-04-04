@@ -1,14 +1,12 @@
 package is.gudmundur1.primeclaim;
 
 import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpResponse;
-import io.vertx.ext.web.client.WebClient;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.ext.web.client.WebClient;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -66,26 +64,26 @@ public class TestMainVerticle {
   @DisplayName("Should start a Web Server on port")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void start_http_server(Vertx vertx, VertxTestContext testContext) throws Throwable {
-    vertx.createHttpClient().getNow(HTTP_PORT, "localhost", "/", response -> testContext.verify(() -> {
-      assertTrue(response.statusCode() == 200);
-      response.handler(body -> {
-        assertTrue(body.toString().contains("hello"));
+    WebClient client = WebClient.create(vertx);
+    client.get(HTTP_PORT, "localhost", "/").rxSend().subscribe(response ->
+      testContext.verify(() -> {
+        assertTrue(response.statusCode() == 200);
+        assertTrue(response.body().toString().contains("hello"));
         testContext.completeNow();
-      });
-    }));
+      }));
   }
 
   @Test
   @DisplayName("Should respond to GET /ping")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void get_ping(Vertx vertx, VertxTestContext testContext) throws Throwable {
-    vertx.createHttpClient().getNow(HTTP_PORT, "localhost", "/ping", response -> testContext.verify(() -> {
-      assertTrue(response.statusCode() == 200);
-      response.handler(body -> {
-        assertTrue(body.toString().contains("pong"));
+    WebClient client = WebClient.create(vertx);
+    client.get(HTTP_PORT, "localhost", "/ping").rxSend().subscribe(response ->
+      testContext.verify(() -> {
+        assertTrue(response.statusCode() == 200);
+        assertTrue(response.body().toString().contains("pong"));
         testContext.completeNow();
-      });
-    }));
+      }));
   }
 
   @Test
@@ -97,18 +95,9 @@ public class TestMainVerticle {
     String username = "myname";
     newUser.put("username", username);
     newUser.put("isadmin", false);
-    client.post(HTTP_PORT, HOST, "/user").sendJsonObject(newUser, post -> {
-      if (post.failed()) {
-        testContext.failNow(post.cause());
-        return;
-      }
-      testContext.verify(() -> assertEquals(200, post.result().statusCode()));
-      client.get(HTTP_PORT, HOST, "/user/" + username).send(get -> {
-        if (get.failed()) {
-          testContext.failNow(get.cause());
-          return;
-        }
-        HttpResponse<Buffer> result = get.result();
+    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).subscribe(postResult -> {
+      testContext.verify(() -> assertEquals(200, postResult.statusCode()));
+      client.get(HTTP_PORT, HOST, "/user/" + username).rxSend().subscribe(result -> {
         assertEquals(200, result.statusCode());
         JsonObject json = result.bodyAsJsonObject();
         testContext.verify(() -> {
