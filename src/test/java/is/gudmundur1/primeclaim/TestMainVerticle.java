@@ -97,16 +97,15 @@ public class TestMainVerticle {
     newUser.put("isadmin", false);
     client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).subscribe(postResult -> {
       testContext.verify(() -> assertEquals(200, postResult.statusCode()));
-      client.get(HTTP_PORT, HOST, "/user/" + username).rxSend().subscribe(result -> {
-        assertEquals(200, result.statusCode());
-        JsonObject json = result.bodyAsJsonObject();
+      client.get(HTTP_PORT, HOST, "/user/" + username).rxSend().subscribe(result ->
         testContext.verify(() -> {
+          assertEquals(200, result.statusCode());
+          JsonObject json = result.bodyAsJsonObject();
           assertEquals(username, json.getString("username"));
           assertEquals(false, json.getBoolean("isadmin"));
           assertTrue(json.getString("apikey").matches("[A-Za-z0-9]+"));
-        });
-        testContext.completeNow();
-      });
+          testContext.completeNow();
+        }));
     });
   }
 
