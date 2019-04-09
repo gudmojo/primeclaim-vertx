@@ -122,9 +122,10 @@ public class TestMainVerticle {
     String username = "myname";
     newUser.put("username", username);
     newUser.put("isadmin", false);
-    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).subscribe(postResult -> {
+    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(postResult -> {
       assertEquals(testContext, 200, postResult.statusCode());
-      client.get(HTTP_PORT, HOST, "/user/" + username).rxSend().subscribe(result ->
+      return client.get(HTTP_PORT, HOST, "/user/" + username).rxSend();
+    }).subscribe(result ->
         testContext.verify(() -> {
           assertEquals(testContext, 200, result.statusCode());
           JsonObject json = result.bodyAsJsonObject();
@@ -133,7 +134,6 @@ public class TestMainVerticle {
           assertTrue(json.getString("apikey").matches("[A-Za-z0-9]+"));
           testContext.completeNow();
         }));
-    });
   }
 
   @Test
