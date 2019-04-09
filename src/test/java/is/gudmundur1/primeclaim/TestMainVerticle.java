@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(VertxExtension.class)
@@ -91,7 +90,7 @@ public class TestMainVerticle {
       client.get(HTTP_PORT, HOST, "/user/myname").rxSend())
       .flatMap(apiKey ->
 
-      client.get(HTTP_PORT, "localhost", "/ping?apikey=" + apiKey.bodyAsJsonObject().getString("apikey")).rxSend())
+        client.get(HTTP_PORT, "localhost", "/ping?apikey=" + apiKey.bodyAsJsonObject().getString("apikey")).rxSend())
       .subscribe(response ->
         testContext.verify(() -> {
           assertTrue(response.statusCode() == 200);
@@ -126,47 +125,46 @@ public class TestMainVerticle {
       assertEquals(testContext, 200, postResult.statusCode());
       return client.get(HTTP_PORT, HOST, "/user/" + username).rxSend();
     }).subscribe(result ->
-        testContext.verify(() -> {
-          assertEquals(testContext, 200, result.statusCode());
-          JsonObject json = result.bodyAsJsonObject();
-          assertEquals(testContext, username, json.getString("username"));
-          assertEquals(testContext, false, json.getBoolean("isadmin"));
-          assertTrue(json.getString("apikey").matches("[A-Za-z0-9]+"));
-          testContext.completeNow();
-        }));
+      testContext.verify(() -> {
+        assertEquals(testContext, 200, result.statusCode());
+        JsonObject json = result.bodyAsJsonObject();
+        assertEquals(testContext, username, json.getString("username"));
+        assertEquals(testContext, false, json.getBoolean("isadmin"));
+        assertTrue(json.getString("apikey").matches("[A-Za-z0-9]+"));
+        testContext.completeNow();
+      }));
   }
 
   @Test
   @DisplayName("claim 10 primes and list them")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void claim_prime(Vertx vertx, VertxTestContext testContext) throws Throwable {
-  JsonObject newUser = new JsonObject();
+    JsonObject newUser = new JsonObject();
     String username = "johnny";
     newUser.put("username", username);
     newUser.put("isadmin", false);
     WebClient client = WebClient.create(vertx, new WebClientOptions().setLogActivity(true));
-    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).subscribe(createUser -> {
+    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(createUser -> {
       assertEquals(testContext, 200, createUser.statusCode());
-      Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+      return Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
         .flatMapSingle(i -> {
           JsonObject req = new JsonObject();
           req.put("username", "johnny");
           req.put("prime", i);
           return client.post(HTTP_PORT, HOST, "/claims").rxSendJsonObject(req);
-        }).toList()
-        .subscribe(item -> {
-          client.get(HTTP_PORT, HOST, "/claims").rxSend().subscribe(response -> {
-            JsonArray list = response.bodyAsJsonArray();
-            assertEquals(testContext, 10, list.size());
-            List<Integer> intList = new ArrayList<>(list.size());
-            for (int i=0; i<list.size(); i++) {
-              intList.add(list.getJsonObject(i).getInteger("prime"));
-            }
-            Collections.sort(intList);
-            assertEquals(testContext, "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]", intList.toString());
-            testContext.completeNow();
-            });
-          });
-        });
+        }).toList();
+    })
+      .flatMap(item -> client.get(HTTP_PORT, HOST, "/claims").rxSend())
+      .subscribe(response -> {
+        JsonArray list = response.bodyAsJsonArray();
+        assertEquals(testContext, 10, list.size());
+        List<Integer> intList = new ArrayList<>(list.size());
+        for (int i = 0; i < list.size(); i++) {
+          intList.add(list.getJsonObject(i).getInteger("prime"));
+        }
+        Collections.sort(intList);
+        assertEquals(testContext, "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]", intList.toString());
+        testContext.completeNow();
+      });
   }
 }
