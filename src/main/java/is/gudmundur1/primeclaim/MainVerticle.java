@@ -67,7 +67,7 @@ public class MainVerticle extends AbstractVerticle {
         sqlClient.rxGetConnection().flatMap(connection ->
           connection.rxUpdateWithParams(sql, params).doAfterTerminate(connection::close))
           .subscribe(result -> {
-            LOGGER.info("Insert success");
+            LOGGER.info("Success: Create claim");
             routingContext.response().end();
           }, err -> {
             LOGGER.error("Exception executing insert", err);
@@ -84,8 +84,10 @@ public class MainVerticle extends AbstractVerticle {
         response.putHeader("content-type", "text/plain").setChunked(true);
 
         JsonArray collection = new JsonArray();
-        sqlClient.rxGetConnection().flatMap(connection ->
-          connection.rxQuery("select prime, owner from claim").doAfterTerminate(connection::close))
+        sqlClient.rxGetConnection().flatMap(connection -> {
+          String sql = "select prime, username as owner from claim c left join appuser u on c.owner = u.id";
+          return connection.rxQuery(sql).doAfterTerminate(connection::close);
+        })
           .subscribe(resultSet -> {
             resultSet.getRows().forEach(collection::add);
             response.end(collection.encode());
@@ -130,7 +132,7 @@ public class MainVerticle extends AbstractVerticle {
         sqlClient.rxGetConnection().flatMap(connection ->
           connection.rxUpdateWithParams(sql, params).doAfterTerminate(connection::close))
           .subscribe(result -> {
-              LOGGER.info("Insert success");
+              LOGGER.info("Success: Create user");
               routingContext.response().end();
             }, err -> {
               LOGGER.error("Exception executing insert", err);
