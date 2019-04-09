@@ -14,17 +14,45 @@ import io.vertx.reactivex.ext.web.handler.BodyHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 public class MainVerticle extends AbstractVerticle {
 
   public static final Logger LOGGER = LoggerFactory.getLogger(MainVerticle.class);
 
-  private void guard(RoutingContext routingContext, Runnable fn) {
+  private SQLClient sqlClient;
+
+  private void exceptionGuard(RoutingContext routingContext, Runnable fn) {
     try {
       fn.run();
     } catch (Throwable t) {
       LOGGER.error("Exception in web guard: ", t);
       fail(routingContext);
     }
+  }
+
+  private void loggedInOnly(RoutingContext routingContext, Runnable fn) {
+    sqlClient.rxGetConnection().flatMap(connection -> {
+      String sql = "select username from apikey a join appuser u on a.userid = u.id where apikey = ?";
+      JsonArray params = new JsonArray();
+      List<String> apikeyList = routingContext.queryParam("apikey");
+      if (apikeyList.isEmpty()) {
+        LOGGER.warn("No api key");
+        throw new RuntimeException("No api key");
+      }
+      params.add(apikeyList.get(0));
+      return connection.rxQueryWithParams(sql, params);
+    }).subscribe(queryResult -> {
+        if (queryResult.getRows().isEmpty()) {
+          LOGGER.warn("Invalid api key");
+          routingContext.response().setStatusCode(403).end();
+        } else {
+          fn.run();
+        }
+      }, err -> {
+        LOGGER.error("Error in loggedInOnly", err);
+        routingContext.response().setStatusCode(403).end();
+      });
   }
 
   @Override
@@ -35,12 +63,12 @@ public class MainVerticle extends AbstractVerticle {
       .put("username", config().getString("postgres-username"))
       .put("password", config().getString("postgres-password"))
       .put("database", config().getString("postgres-database"));
-    SQLClient sqlClient = PostgreSQLClient.createShared(vertx, postgreSQLClientConfig);
+    sqlClient = PostgreSQLClient.createShared(vertx, postgreSQLClientConfig);
 
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
     router.route(HttpMethod.GET, "/").handler(routingContext ->
-      guard(routingContext, () ->
+      exceptionGuard(routingContext, () ->
         sqlClient.rxGetConnection()
           .flatMap(connection -> connection.rxQuery("select 'hello' as col1").doAfterTerminate(connection::close))
           .subscribe(resultSet -> {
@@ -54,7 +82,7 @@ public class MainVerticle extends AbstractVerticle {
             )));
 
     router.route(HttpMethod.POST, "/claims").handler(routingContext -> {
-      guard(routingContext, () -> {
+      exceptionGuard(routingContext, () -> {
         JsonObject bodyAsJson = routingContext.getBodyAsJson();
         Integer prime = bodyAsJson.getInteger("prime");
         String username = bodyAsJson.getString("username"); // TODO authenticate
@@ -79,7 +107,7 @@ public class MainVerticle extends AbstractVerticle {
     // TODO add pagination
     // TODO add filter by owner
     router.route(HttpMethod.GET, "/claims").handler(routingContext -> {
-      guard(routingContext, () -> {
+      exceptionGuard(routingContext, () -> {
         HttpServerResponse response = routingContext.response();
         response.putHeader("content-type", "text/plain").setChunked(true);
 
@@ -100,21 +128,23 @@ public class MainVerticle extends AbstractVerticle {
 
 
     router.route(HttpMethod.GET, "/ping").handler(routingContext ->
-      guard(routingContext, () -> {
-        sqlClient.rxGetConnection().flatMap(connection ->
-          connection.rxQuery("select 'pong' as col1").doAfterTerminate(connection::close))
-          .subscribe(result -> {
-            routingContext.response()
-              .putHeader("content-type", "text/plain")
-              .end(result.getRows().get(0).getString("col1"));
-          }, err -> {
-            LOGGER.error("Exception executing query", err);
-            fail(routingContext);
+      exceptionGuard(routingContext, () -> {
+        loggedInOnly(routingContext, () -> {
+          sqlClient.rxGetConnection().flatMap(connection ->
+            connection.rxQuery("select 'pong' as col1").doAfterTerminate(connection::close))
+            .subscribe(result -> {
+              routingContext.response()
+                .putHeader("content-type", "text/plain")
+                .end(result.getRows().get(0).getString("col1"));
+            }, err -> {
+              LOGGER.error("Exception executing query", err);
+              fail(routingContext);
+            });
           });
       }));
 
     router.route(HttpMethod.POST, "/user").handler(routingContext -> {
-      guard(routingContext, () -> {
+      exceptionGuard(routingContext, () -> {
         JsonObject bodyAsJson = routingContext.getBodyAsJson();
         String username = bodyAsJson.getString("username");
         JsonArray params = new JsonArray();
@@ -142,7 +172,7 @@ public class MainVerticle extends AbstractVerticle {
       });
 
     router.route(HttpMethod.GET, "/user/:username").handler(routingContext -> {
-      guard(routingContext, () -> {
+      exceptionGuard(routingContext, () -> {
         HttpServerResponse response = routingContext.response();
         String sql =
           "select username, isadmin, apikey " +

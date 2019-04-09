@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(VertxExtension.class)
@@ -82,10 +83,32 @@ public class TestMainVerticle {
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void get_ping(Vertx vertx, VertxTestContext testContext) throws Throwable {
     WebClient client = WebClient.create(vertx);
+    JsonObject newUser = new JsonObject();
+    String username = "myname";
+    newUser.put("username", username);
+    newUser.put("isadmin", false);
+    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(postResult ->
+      client.get(HTTP_PORT, HOST, "/user/myname").rxSend())
+      .flatMap(apiKey ->
+
+      client.get(HTTP_PORT, "localhost", "/ping?apikey=" + apiKey.bodyAsJsonObject().getString("apikey")).rxSend())
+      .subscribe(response ->
+        testContext.verify(() -> {
+          assertTrue(response.statusCode() == 200);
+          assertTrue(response.body().toString().contains("pong"));
+          testContext.completeNow();
+        }));
+  }
+
+  @Test
+  @DisplayName("Ping should fail if not authenticated")
+  @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
+  void ping_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) throws Throwable {
+    WebClient client = WebClient.create(vertx);
     client.get(HTTP_PORT, "localhost", "/ping").rxSend().subscribe(response ->
       testContext.verify(() -> {
-        assertTrue(response.statusCode() == 200);
-        assertTrue(response.body().toString().contains("pong"));
+        assertTrue(response.statusCode() == 403);
+        assertTrue(response.body() == null);
         testContext.completeNow();
       }));
   }
