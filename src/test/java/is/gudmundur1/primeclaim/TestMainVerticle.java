@@ -1,11 +1,18 @@
 package is.gudmundur1.primeclaim;
 
+import io.reactivex.Observable;
+import io.reactivex.Single;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import io.vertx.reactivex.ObservableHelper;
+import io.vertx.reactivex.SingleHelper;
 import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.core.buffer.Buffer;
+import io.vertx.reactivex.ext.web.client.HttpResponse;
 import io.vertx.reactivex.ext.web.client.WebClient;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +25,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -110,16 +118,26 @@ public class TestMainVerticle {
   }
 
   @Test
-  @DisplayName("claim prime")
+  @DisplayName("claim 10 primes and list them")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void claim_prime(Vertx vertx, VertxTestContext testContext) throws Throwable {
-    testContext.failNow(new Exception("test not implemented"));
-  }
-
-  @Test
-  @DisplayName("list claims")
-  @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void list_claims(Vertx vertx, VertxTestContext testContext) throws Throwable {
-    testContext.failNow(new Exception("test not implemented"));
+    WebClient client = WebClient.create(vertx, new WebClientOptions().setLogActivity(true));
+    Observable<HttpResponse<Buffer>> obs = Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+      .flatMapSingle(i -> {
+        JsonObject req = new JsonObject();
+        req.put("username", "johnny");
+        req.put("prime", i);
+        return client.post(HTTP_PORT, HOST, "/claims").rxSendJsonObject(req);
+      });
+    obs.toList()
+      .subscribe(item -> {
+        client.get(HTTP_PORT, HOST, "/claims").rxSend().subscribe(response -> {
+          System.out.println("B geeet");
+          testContext.verify(() -> {
+            assertEquals(10, response.bodyAsJsonArray().size());
+            testContext.failNow(new Exception("test not implemented"));
+          });
+        });
+      });
   }
 }
