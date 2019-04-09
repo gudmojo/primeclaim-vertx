@@ -69,10 +69,10 @@ public class TestMainVerticle {
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void start_http_server(Vertx vertx, VertxTestContext testContext) throws Throwable {
     WebClient client = WebClient.create(vertx);
-    client.get(HTTP_PORT, "localhost", "/").rxSend().subscribe(response ->
+    client.get(HTTP_PORT, "localhost", "/").rxSend().subscribe(getRoot ->
       testContext.verify(() -> {
-        assertTrue(response.statusCode() == 200);
-        assertTrue(response.body().toString().contains("hello"));
+        assertTrue(getRoot.statusCode() == 200);
+        assertTrue(getRoot.body().toString().contains("hello"));
         testContext.completeNow();
       }));
   }
@@ -88,13 +88,12 @@ public class TestMainVerticle {
     newUser.put("isadmin", false);
     client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(postResult ->
       client.get(HTTP_PORT, HOST, "/user/myname").rxSend())
-      .flatMap(apiKey ->
-
-        client.get(HTTP_PORT, "localhost", "/ping?apikey=" + apiKey.bodyAsJsonObject().getString("apikey")).rxSend())
-      .subscribe(response ->
+      .flatMap(getUser ->
+        client.get(HTTP_PORT, "localhost", "/ping?apikey=" + getUser.bodyAsJsonObject().getString("apikey")).rxSend())
+      .subscribe(getPing ->
         testContext.verify(() -> {
-          assertTrue(response.statusCode() == 200);
-          assertTrue(response.body().toString().contains("pong"));
+          assertTrue(getPing.statusCode() == 200);
+          assertTrue(getPing.body().toString().contains("pong"));
           testContext.completeNow();
         }));
   }
@@ -104,10 +103,10 @@ public class TestMainVerticle {
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void ping_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) throws Throwable {
     WebClient client = WebClient.create(vertx);
-    client.get(HTTP_PORT, "localhost", "/ping").rxSend().subscribe(response ->
+    client.get(HTTP_PORT, "localhost", "/ping").rxSend().subscribe(getPing ->
       testContext.verify(() -> {
-        assertTrue(response.statusCode() == 403);
-        assertTrue(response.body() == null);
+        assertTrue(getPing.statusCode() == 403);
+        assertTrue(getPing.body() == null);
         testContext.completeNow();
       }));
   }
@@ -121,13 +120,13 @@ public class TestMainVerticle {
     String username = "myname";
     newUser.put("username", username);
     newUser.put("isadmin", false);
-    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(postResult -> {
-      assertEquals(testContext, 200, postResult.statusCode());
+    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(postUser -> {
+      assertEquals(testContext, 200, postUser.statusCode());
       return client.get(HTTP_PORT, HOST, "/user/" + username).rxSend();
-    }).subscribe(result ->
+    }).subscribe(getUser ->
       testContext.verify(() -> {
-        assertEquals(testContext, 200, result.statusCode());
-        JsonObject json = result.bodyAsJsonObject();
+        assertEquals(testContext, 200, getUser.statusCode());
+        JsonObject json = getUser.bodyAsJsonObject();
         assertEquals(testContext, username, json.getString("username"));
         assertEquals(testContext, false, json.getBoolean("isadmin"));
         assertTrue(json.getString("apikey").matches("[A-Za-z0-9]+"));
@@ -147,16 +146,16 @@ public class TestMainVerticle {
     client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(createUser -> {
       assertEquals(testContext, 200, createUser.statusCode());
       return Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
-        .flatMapSingle(i -> {
+        .flatMapSingle(prime -> {
           JsonObject req = new JsonObject();
           req.put("username", "johnny");
-          req.put("prime", i);
+          req.put("prime", prime);
           return client.post(HTTP_PORT, HOST, "/claims").rxSendJsonObject(req);
         }).toList();
     })
-      .flatMap(item -> client.get(HTTP_PORT, HOST, "/claims").rxSend())
-      .subscribe(response -> {
-        JsonArray list = response.bodyAsJsonArray();
+      .flatMap(postAllClaims -> client.get(HTTP_PORT, HOST, "/claims").rxSend())
+      .subscribe(getClaims -> {
+        JsonArray list = getClaims.bodyAsJsonArray();
         assertEquals(testContext, 10, list.size());
         List<Integer> intList = new ArrayList<>(list.size());
         for (int i = 0; i < list.size(); i++) {
