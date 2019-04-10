@@ -197,9 +197,9 @@ public class TestMainVerticle {
             "/claims?apikey=" + apikey).rxSendJsonObject(req);
           }).toList(), Foo1::new);
       })
-      .flatMap(postAllClaims -> {
-        postAllClaims.postAllClaims.forEach(postClaim -> assertEquals(testContext, 200, postClaim.statusCode()));
-        return client.get(HTTP_PORT, HOST, "/claims?apikey=" + postAllClaims.apiKey).rxSend();
+      .flatMap(foo1 -> {
+        foo1.postAllClaims.forEach(postClaim -> assertEquals(testContext, 200, postClaim.statusCode()));
+        return client.get(HTTP_PORT, HOST, "/claims?apikey=" + foo1.apiKey).rxSend();
       }).subscribe(getClaims -> {
           JsonArray list = getClaims.bodyAsJsonArray();
           assertEquals(testContext, 10, list.size());
