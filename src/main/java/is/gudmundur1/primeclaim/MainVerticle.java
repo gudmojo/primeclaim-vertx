@@ -41,7 +41,7 @@ public class MainVerticle extends AbstractVerticle {
         throw new RuntimeException("No api key");
       }
       params.add(apikeyList.get(0));
-      return connection.rxQueryWithParams(sql, params);
+      return connection.rxQueryWithParams(sql, params).doAfterTerminate(connection::close);
     }).subscribe(queryResult -> {
         if (queryResult.getRows().isEmpty()) {
           LOGGER.warn("Invalid api key");
@@ -83,24 +83,26 @@ public class MainVerticle extends AbstractVerticle {
 
     router.route(HttpMethod.POST, "/claims").handler(routingContext -> {
       exceptionGuard(routingContext, () -> {
-        JsonObject bodyAsJson = routingContext.getBodyAsJson();
-        Integer prime = bodyAsJson.getInteger("prime");
-        String username = bodyAsJson.getString("username"); // TODO authenticate
-        JsonArray params = new JsonArray();
-        params.add(prime);
-        params.add(username);
-        String sql =
-          " insert into claim (prime, owner) " +
-            " select ?, id from appuser where username = ?";
-        sqlClient.rxGetConnection().flatMap(connection ->
-          connection.rxUpdateWithParams(sql, params).doAfterTerminate(connection::close))
-          .subscribe(result -> {
-            LOGGER.info("Success: Create claim");
-            routingContext.response().end();
-          }, err -> {
-            LOGGER.error("Exception executing insert", err);
-            fail(routingContext);
-          });
+        loggedInOnly(routingContext, () -> {
+          JsonObject bodyAsJson = routingContext.getBodyAsJson();
+          Integer prime = bodyAsJson.getInteger("prime");
+          String username = bodyAsJson.getString("username"); // TODO authenticate
+          JsonArray params = new JsonArray();
+          params.add(prime);
+          params.add(username);
+          String sql =
+            " insert into claim (prime, owner) " +
+              " select ?, id from appuser where username = ?";
+          sqlClient.rxGetConnection().flatMap(connection ->
+            connection.rxUpdateWithParams(sql, params).doAfterTerminate(connection::close))
+            .subscribe(result -> {
+              LOGGER.info("Success: Create claim");
+              routingContext.response().end();
+            }, err -> {
+              LOGGER.error("Exception executing insert", err);
+              fail(routingContext);
+            });
+        });
       });
     });
 

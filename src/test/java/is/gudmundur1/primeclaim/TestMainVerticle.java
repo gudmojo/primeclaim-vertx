@@ -112,6 +112,22 @@ public class TestMainVerticle {
   }
 
   @Test
+  @DisplayName("POST claim should fail if not authenticated")
+  @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
+  void post_claim_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) throws Throwable {
+    WebClient client = WebClient.create(vertx);
+    JsonObject claim = new JsonObject();
+    claim.put("username", "johnny");
+    claim.put("prime", 3);
+    client.post(HTTP_PORT, "localhost", "/claims").rxSendJsonObject(claim).subscribe(getPing ->
+      testContext.verify(() -> {
+        assertTrue(getPing.statusCode() == 403);
+        assertTrue(getPing.body() == null);
+        testContext.completeNow();
+      }));
+  }
+
+  @Test
   @DisplayName("create user")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void create_user(Vertx vertx, VertxTestContext testContext) throws Throwable {
@@ -143,27 +159,38 @@ public class TestMainVerticle {
     newUser.put("username", username);
     newUser.put("isadmin", false);
     WebClient client = WebClient.create(vertx, new WebClientOptions().setLogActivity(true));
-    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(createUser -> {
-      assertEquals(testContext, 200, createUser.statusCode());
-      return Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
-        .flatMapSingle(prime -> {
-          JsonObject req = new JsonObject();
-          req.put("username", "johnny");
-          req.put("prime", prime);
-          return client.post(HTTP_PORT, HOST, "/claims").rxSendJsonObject(req);
-        }).toList();
-    })
-      .flatMap(postAllClaims -> client.get(HTTP_PORT, HOST, "/claims").rxSend())
-      .subscribe(getClaims -> {
-        JsonArray list = getClaims.bodyAsJsonArray();
-        assertEquals(testContext, 10, list.size());
-        List<Integer> intList = new ArrayList<>(list.size());
-        for (int i = 0; i < list.size(); i++) {
-          intList.add(list.getJsonObject(i).getInteger("prime"));
-        }
-        Collections.sort(intList);
-        assertEquals(testContext, "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]", intList.toString());
-        testContext.completeNow();
-      });
+    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser)
+      .flatMap(createUser -> {
+        assertEquals(testContext, 200, createUser.statusCode());
+        return client.get(HTTP_PORT, HOST, "/user/johnny").rxSend();
+      })
+      .flatMap(getUser -> {
+        assertEquals(testContext, 200, getUser.statusCode());
+        return Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+          .flatMapSingle(prime -> {
+            System.out.println("testgummi prime " + prime);
+            JsonObject req = new JsonObject();
+            req.put("username", "johnny");
+            req.put("prime", prime);
+            return client.post(HTTP_PORT, HOST,
+            "/claims?apikey=" + getUser.bodyAsJsonObject().getString("apikey")).rxSendJsonObject(req);
+          }).toList();
+      })
+      .flatMap(postAllClaims -> {
+        System.out.println("testgummi 179");
+        postAllClaims.forEach(postClaim -> assertEquals(testContext, 200, postClaim.statusCode()));
+        return client.get(HTTP_PORT, HOST, "/claims").rxSend();
+      }).subscribe(getClaims -> {
+          System.out.println("testgummi 183");
+          JsonArray list = getClaims.bodyAsJsonArray();
+          assertEquals(testContext, 10, list.size());
+          List<Integer> intList = new ArrayList<>(list.size());
+          for (int i = 0; i < list.size(); i++) {
+            intList.add(list.getJsonObject(i).getInteger("prime"));
+          }
+          Collections.sort(intList);
+          assertEquals(testContext, "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]", intList.toString());
+          testContext.completeNow();
+        });
   }
 }
