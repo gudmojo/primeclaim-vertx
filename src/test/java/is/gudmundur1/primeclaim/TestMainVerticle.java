@@ -1,6 +1,8 @@
 package is.gudmundur1.primeclaim;
 
 import io.reactivex.Observable;
+import io.reactivex.Single;
+import io.reactivex.SingleSource;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -9,7 +11,10 @@ import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.reactivex.core.Vertx;
+import io.vertx.reactivex.core.buffer.Buffer;
+import io.vertx.reactivex.ext.web.client.HttpResponse;
 import io.vertx.reactivex.ext.web.client.WebClient;
+import javafx.util.Pair;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -128,6 +134,21 @@ public class TestMainVerticle {
   }
 
   @Test
+  @DisplayName("GET claim should fail if not authenticated")
+  @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
+  void get_claim_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) throws Throwable {
+    WebClient client = WebClient.create(vertx);
+    JsonObject claim = new JsonObject();
+    claim.put("username", "johnny");
+    claim.put("prime", 3);
+    client.get(HTTP_PORT, "localhost", "/claims").rxSend().subscribe(getPing -> {
+      assertEquals(testContext, getPing.statusCode(), 403);
+      testContext.verify(() -> assertTrue(getPing.body() == null));
+      testContext.completeNow();
+    });
+  }
+
+  @Test
   @DisplayName("create user")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void create_user(Vertx vertx, VertxTestContext testContext) throws Throwable {
@@ -165,23 +186,21 @@ public class TestMainVerticle {
         return client.get(HTTP_PORT, HOST, "/user/johnny").rxSend();
       })
       .flatMap(getUser -> {
+        String apikey = getUser.bodyAsJsonObject().getString("apikey");
         assertEquals(testContext, 200, getUser.statusCode());
-        return Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+        return Single.zip(Single.just(apikey), Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
           .flatMapSingle(prime -> {
-            System.out.println("testgummi prime " + prime);
             JsonObject req = new JsonObject();
             req.put("username", "johnny");
             req.put("prime", prime);
             return client.post(HTTP_PORT, HOST,
-            "/claims?apikey=" + getUser.bodyAsJsonObject().getString("apikey")).rxSendJsonObject(req);
-          }).toList();
+            "/claims?apikey=" + apikey).rxSendJsonObject(req);
+          }).toList(), Foo1::new);
       })
       .flatMap(postAllClaims -> {
-        System.out.println("testgummi 179");
-        postAllClaims.forEach(postClaim -> assertEquals(testContext, 200, postClaim.statusCode()));
-        return client.get(HTTP_PORT, HOST, "/claims").rxSend();
+        postAllClaims.postAllClaims.forEach(postClaim -> assertEquals(testContext, 200, postClaim.statusCode()));
+        return client.get(HTTP_PORT, HOST, "/claims?apikey=" + postAllClaims.apiKey).rxSend();
       }).subscribe(getClaims -> {
-          System.out.println("testgummi 183");
           JsonArray list = getClaims.bodyAsJsonArray();
           assertEquals(testContext, 10, list.size());
           List<Integer> intList = new ArrayList<>(list.size());
@@ -192,5 +211,15 @@ public class TestMainVerticle {
           assertEquals(testContext, "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]", intList.toString());
           testContext.completeNow();
         });
+  }
+
+  private class Foo1 {
+    String apiKey;
+    List<HttpResponse<Buffer>> postAllClaims;
+
+    Foo1(String apiKey, List<HttpResponse<Buffer>> postAllClaims) {
+      this.apiKey = apiKey;
+      this.postAllClaims = postAllClaims;
+    }
   }
 }

@@ -110,20 +110,22 @@ public class MainVerticle extends AbstractVerticle {
     // TODO add filter by owner
     router.route(HttpMethod.GET, "/claims").handler(routingContext -> {
       exceptionGuard(routingContext, () -> {
-        HttpServerResponse response = routingContext.response();
-        response.putHeader("content-type", "text/plain").setChunked(true);
+        loggedInOnly(routingContext, () -> {
+          HttpServerResponse response = routingContext.response();
+          response.putHeader("content-type", "text/plain").setChunked(true);
 
-        JsonArray collection = new JsonArray();
-        sqlClient.rxGetConnection().flatMap(connection -> {
-          String sql = "select prime, username as owner from claim c left join appuser u on c.owner = u.id";
-          return connection.rxQuery(sql).doAfterTerminate(connection::close);
-        })
-          .subscribe(resultSet -> {
-            resultSet.getRows().forEach(collection::add);
-            response.end(collection.encode());
-          }, err -> {
-            LOGGER.error("Query failed", err);
-            fail(routingContext);
+          JsonArray collection = new JsonArray();
+          sqlClient.rxGetConnection().flatMap(connection -> {
+            String sql = "select prime, username as owner from claim c left join appuser u on c.owner = u.id";
+            return connection.rxQuery(sql).doAfterTerminate(connection::close);
+          })
+            .subscribe(resultSet -> {
+              resultSet.getRows().forEach(collection::add);
+              response.end(collection.encode());
+            }, err -> {
+              LOGGER.error("Query failed", err);
+              fail(routingContext);
+            });
           });
         });
       });
