@@ -53,12 +53,12 @@ public class TestMainVerticle {
     String pgUrl = "jdbc:postgresql://" + PG_HOSTNAME + ":" + pgPort + "/" + PG_DATABASE;
     DeploymentOptions options = new DeploymentOptions()
       .setConfig(new JsonObject()
-        .put("http.port", HTTP_PORT)
-        .put("postgres-host", "localhost")
-        .put("postgres-port", pgPort)
-        .put("postgres-database", PG_DATABASE)
-        .put("postgres-username", PG_USERNAME)
-        .put("postgres-password", PG_PASSWORD)
+        .put(ConfigKey.LISTEN_PORT, HTTP_PORT)
+        .put(ConfigKey.POSTGRES_HOST, PG_HOSTNAME)
+        .put(ConfigKey.POSTGRES_PORT, pgPort)
+        .put(ConfigKey.POSTGRES_DATABASE, PG_DATABASE)
+        .put(ConfigKey.POSTGRES_USER, PG_USERNAME)
+        .put(ConfigKey.POSTGRES_PASSWORD, PG_PASSWORD)
         .put(ConfigKey.BOOTSTRAP_ADMIN_API_KEY, ADMIN_API_KEY)
       );
     Flyway flyway = Flyway.configure().dataSource(
@@ -83,40 +83,6 @@ public class TestMainVerticle {
   }
 
   @Test
-  @DisplayName("Should respond to GET /ping")
-  @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void get_ping(Vertx vertx, VertxTestContext testContext) {
-    WebClient client = WebClient.create(vertx);
-    JsonObject newUser = new JsonObject();
-    String username = "myname";
-    newUser.put("username", username);
-    newUser.put("isadmin", false);
-    client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser).flatMap(postResult ->
-      client.get(HTTP_PORT, HOST, "/user/myname?apikey=" + ADMIN_API_KEY).rxSend())
-      .flatMap(getUser ->
-        client.get(HTTP_PORT, "localhost", "/ping?apikey=" + getUser.bodyAsJsonObject().getString("apikey")).rxSend())
-      .subscribe(getPing ->
-        testContext.verify(() -> {
-          assertTrue(getPing.statusCode() == 200);
-          assertTrue(getPing.body().toString().contains("pong"));
-          testContext.completeNow();
-        }));
-  }
-
-  @Test
-  @DisplayName("Ping should fail if not authenticated")
-  @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void ping_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) {
-    WebClient client = WebClient.create(vertx);
-    client.get(HTTP_PORT, "localhost", "/ping").rxSend().subscribe(getPing ->
-      testContext.verify(() -> {
-        assertTrue(getPing.statusCode() == 403);
-        assertTrue(getPing.body() == null);
-        testContext.completeNow();
-      }));
-  }
-
-  @Test
   @DisplayName("POST claim should fail if not authenticated")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void post_claim_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) {
@@ -124,10 +90,10 @@ public class TestMainVerticle {
     JsonObject claim = new JsonObject();
     claim.put("username", "johnny");
     claim.put("prime", 3);
-    client.post(HTTP_PORT, "localhost", "/claims").rxSendJsonObject(claim).subscribe(getPing ->
+    client.post(HTTP_PORT, "localhost", "/claims").rxSendJsonObject(claim).subscribe(postClaim ->
       testContext.verify(() -> {
-        assertTrue(getPing.statusCode() == 403);
-        assertTrue(getPing.body() == null);
+        assertTrue(postClaim.statusCode() == 403);
+        assertTrue(postClaim.body() == null);
         testContext.completeNow();
       }));
   }
@@ -140,9 +106,9 @@ public class TestMainVerticle {
     JsonObject claim = new JsonObject();
     claim.put("username", "johnny");
     claim.put("prime", 3);
-    client.get(HTTP_PORT, "localhost", "/claims").rxSend().subscribe(getPing -> {
-      assertEquals(testContext, getPing.statusCode(), 403);
-      testContext.verify(() -> assertTrue(getPing.body() == null));
+    client.get(HTTP_PORT, "localhost", "/claims").rxSend().subscribe(getClaims -> {
+      assertEquals(testContext, getClaims.statusCode(), 403);
+      testContext.verify(() -> assertTrue(getClaims.body() == null));
       testContext.completeNow();
     });
   }
