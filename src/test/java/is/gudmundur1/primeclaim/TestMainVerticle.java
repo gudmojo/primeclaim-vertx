@@ -171,7 +171,7 @@ public class TestMainVerticle {
   }
 
   @Test
-  @DisplayName("claim 10 primes and list them")
+  @DisplayName("claim 5 primes and list them")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
   void claim_prime(Vertx vertx, VertxTestContext testContext) {
     JsonObject newUser = new JsonObject();
@@ -187,7 +187,7 @@ public class TestMainVerticle {
       .flatMap(getUser -> {
         assertEquals(testContext, 200, getUser.statusCode());
         String apikey = getUser.bodyAsJsonObject().getString("apikey");
-        return Single.zip(Single.just(apikey), Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+        return Single.zip(Single.just(apikey), Observable.fromArray(new Integer[]{1, 2, 3, 5, 7})
           .flatMapSingle(prime -> {
             JsonObject req = new JsonObject();
             req.put("username", "johnny");
@@ -201,13 +201,13 @@ public class TestMainVerticle {
         return client.get(HTTP_PORT, HOST, "/claims?apikey=" + tuple.apiKey).rxSend();
       }).subscribe(getClaims -> {
           JsonArray list = getClaims.bodyAsJsonArray();
-          assertEquals(testContext, 10, list.size());
+          assertEquals(testContext, 5, list.size());
           List<Integer> intList = new ArrayList<>(list.size());
           for (int i = 0; i < list.size(); i++) {
             intList.add(list.getJsonObject(i).getInteger("prime"));
           }
           Collections.sort(intList);
-          assertEquals(testContext, "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]", intList.toString());
+          assertEquals(testContext, "[1, 2, 3, 5, 7]", intList.toString());
           testContext.completeNow();
         });
   }

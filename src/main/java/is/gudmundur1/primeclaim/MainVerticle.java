@@ -121,6 +121,9 @@ public class MainVerticle extends AbstractVerticle {
           JsonObject bodyAsJson = routingContext.getBodyAsJson();
           Integer prime = bodyAsJson.getInteger("prime");
           String username = bodyAsJson.getString("username"); // TODO authenticate
+          if (!PrimeUtil.isPrime(prime)) {
+            routingContext.response().setStatusCode(400).end();
+          }
           JsonArray params = new JsonArray();
           params.add(prime);
           params.add(username);
