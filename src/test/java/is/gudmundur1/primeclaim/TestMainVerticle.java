@@ -107,7 +107,7 @@ public class TestMainVerticle {
     claim.put("username", "johnny");
     claim.put("prime", 3);
     client.get(HTTP_PORT, "localhost", "/claims").rxSend().subscribe(getClaims -> {
-      assertEquals(testContext, getClaims.statusCode(), 403);
+      assertEquals(testContext, 403, getClaims.statusCode());
       testContext.verify(() -> assertTrue(getClaims.body() == null));
       testContext.completeNow();
     });

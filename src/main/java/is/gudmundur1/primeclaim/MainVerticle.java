@@ -35,8 +35,10 @@ public class MainVerticle extends AbstractVerticle {
       .put("database", config().getString(ConfigKey.POSTGRES_DATABASE));
     SQLClient sqlClient = PostgreSQLClient.createShared(vertx, postgreSQLClientConfig);
 
-    AuthService authService = new AuthService(sqlClient);
-    ClaimService claimService = new ClaimService(sqlClient);
+    UserRepo userRepo = new UserRepo(sqlClient);
+    AuthService authService = new AuthService(userRepo);
+    ClaimRepo claimRepo = new ClaimRepo(sqlClient);
+    ClaimService claimService = new ClaimService(claimRepo);
     UserService userService = new UserService(sqlClient);
 
     Router router = Router.router(vertx);

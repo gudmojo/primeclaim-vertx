@@ -1,8 +1,6 @@
 package is.gudmundur1.primeclaim;
 
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.reactivex.ext.sql.SQLClient;
 import io.vertx.reactivex.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,10 +12,10 @@ public class AuthService {
 
   private static Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
 
-  private SQLClient sqlClient;
+  UserRepo userRepo;
 
-  public AuthService(SQLClient sqlClient) {
-    this.sqlClient = sqlClient;
+  public AuthService(UserRepo userRepo) {
+    this.userRepo = userRepo;
   }
 
   public void loggedInOnly(RoutingContext routingContext, Runnable fn) {
@@ -37,17 +35,14 @@ public class AuthService {
   }
 
   private void loggedIn(RoutingContext routingContext, Runnable fn, Predicate<AppUser> predicate) {
-    sqlClient.rxGetConnection().flatMap(connection -> {
-      List<String> apikeyList = routingContext.queryParam("apikey");
-      if (apikeyList.isEmpty()) {
-        LOGGER.warn("No api key");
-        throw new RuntimeException("No api key");
-      }
-      String sql = "select username, isadmin from apikey a join appuser u on a.userid = u.id where apikey = ?";
-      JsonArray params = new JsonArray();
-      params.add(apikeyList.get(0));
-      return connection.rxQueryWithParams(sql, params).doAfterTerminate(connection::close);
-    }).subscribe(queryResult -> {
+    List<String> apikeyList = routingContext.queryParam("apikey");
+    if (apikeyList.isEmpty()) {
+      LOGGER.warn("No api key");
+      routingContext.response().setStatusCode(403).end();
+      return;
+    }
+
+    userRepo.getUserByApiKey(apikeyList).subscribe(queryResult -> {
       List<JsonObject> rows = queryResult.getRows();
       if (rows.isEmpty()) {
         LOGGER.warn("Invalid api key");
