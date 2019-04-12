@@ -2,7 +2,6 @@ package is.gudmundur1.primeclaim;
 
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.reactivex.SingleSource;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -14,7 +13,6 @@ import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.buffer.Buffer;
 import io.vertx.reactivex.ext.web.client.HttpResponse;
 import io.vertx.reactivex.ext.web.client.WebClient;
-import javafx.util.Pair;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,7 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -88,14 +85,14 @@ public class TestMainVerticle {
   @Test
   @DisplayName("Should respond to GET /ping")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void get_ping(Vertx vertx, VertxTestContext testContext) throws Throwable {
+  void get_ping(Vertx vertx, VertxTestContext testContext) {
     WebClient client = WebClient.create(vertx);
     JsonObject newUser = new JsonObject();
     String username = "myname";
     newUser.put("username", username);
     newUser.put("isadmin", false);
     client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser).flatMap(postResult ->
-      client.get(HTTP_PORT, HOST, "/user/myname").rxSend())
+      client.get(HTTP_PORT, HOST, "/user/myname?apikey=" + ADMIN_API_KEY).rxSend())
       .flatMap(getUser ->
         client.get(HTTP_PORT, "localhost", "/ping?apikey=" + getUser.bodyAsJsonObject().getString("apikey")).rxSend())
       .subscribe(getPing ->
@@ -109,7 +106,7 @@ public class TestMainVerticle {
   @Test
   @DisplayName("Ping should fail if not authenticated")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void ping_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) throws Throwable {
+  void ping_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) {
     WebClient client = WebClient.create(vertx);
     client.get(HTTP_PORT, "localhost", "/ping").rxSend().subscribe(getPing ->
       testContext.verify(() -> {
@@ -122,7 +119,7 @@ public class TestMainVerticle {
   @Test
   @DisplayName("POST claim should fail if not authenticated")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void post_claim_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) throws Throwable {
+  void post_claim_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) {
     WebClient client = WebClient.create(vertx);
     JsonObject claim = new JsonObject();
     claim.put("username", "johnny");
@@ -138,7 +135,7 @@ public class TestMainVerticle {
   @Test
   @DisplayName("GET claim should fail if not authenticated")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void get_claim_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) throws Throwable {
+  void get_claim_should_fail_if_not_authenticated(Vertx vertx, VertxTestContext testContext) {
     WebClient client = WebClient.create(vertx);
     JsonObject claim = new JsonObject();
     claim.put("username", "johnny");
@@ -153,7 +150,7 @@ public class TestMainVerticle {
   @Test
   @DisplayName("create user")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void create_user(Vertx vertx, VertxTestContext testContext) throws Throwable {
+  void create_user(Vertx vertx, VertxTestContext testContext) {
     WebClient client = WebClient.create(vertx);
     JsonObject newUser = new JsonObject();
     String username = "myname";
@@ -161,7 +158,7 @@ public class TestMainVerticle {
     newUser.put("isadmin", false);
     client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser).flatMap(postUser -> {
       assertEquals(testContext, 200, postUser.statusCode());
-      return client.get(HTTP_PORT, HOST, "/user/" + username).rxSend();
+      return client.get(HTTP_PORT, HOST, "/user/" + username + "?apikey=" + ADMIN_API_KEY).rxSend();
     }).subscribe(getUser ->
       testContext.verify(() -> {
         assertEquals(testContext, 200, getUser.statusCode());
@@ -176,7 +173,7 @@ public class TestMainVerticle {
   @Test
   @DisplayName("claim 10 primes and list them")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void claim_prime(Vertx vertx, VertxTestContext testContext) throws Throwable {
+  void claim_prime(Vertx vertx, VertxTestContext testContext) {
     JsonObject newUser = new JsonObject();
     String username = "johnny";
     newUser.put("username", username);
@@ -185,11 +182,11 @@ public class TestMainVerticle {
     client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser)
       .flatMap(createUser -> {
         assertEquals(testContext, 200, createUser.statusCode());
-        return client.get(HTTP_PORT, HOST, "/user/johnny").rxSend();
+        return client.get(HTTP_PORT, HOST, "/user/johnny?apikey=" + ADMIN_API_KEY).rxSend();
       })
       .flatMap(getUser -> {
-        String apikey = getUser.bodyAsJsonObject().getString("apikey");
         assertEquals(testContext, 200, getUser.statusCode());
+        String apikey = getUser.bodyAsJsonObject().getString("apikey");
         return Single.zip(Single.just(apikey), Observable.fromArray(new Integer[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
           .flatMapSingle(prime -> {
             JsonObject req = new JsonObject();
@@ -197,11 +194,11 @@ public class TestMainVerticle {
             req.put("prime", prime);
             return client.post(HTTP_PORT, HOST,
             "/claims?apikey=" + apikey).rxSendJsonObject(req);
-          }).toList(), Foo1::new);
+          }).toList(), TupleApiKeyPostAllClaims::new);
       })
-      .flatMap(foo1 -> {
-        foo1.postAllClaims.forEach(postClaim -> assertEquals(testContext, 200, postClaim.statusCode()));
-        return client.get(HTTP_PORT, HOST, "/claims?apikey=" + foo1.apiKey).rxSend();
+      .flatMap(tuple -> {
+        tuple.postAllClaims.forEach(postClaim -> assertEquals(testContext, 200, postClaim.statusCode()));
+        return client.get(HTTP_PORT, HOST, "/claims?apikey=" + tuple.apiKey).rxSend();
       }).subscribe(getClaims -> {
           JsonArray list = getClaims.bodyAsJsonArray();
           assertEquals(testContext, 10, list.size());
@@ -215,11 +212,11 @@ public class TestMainVerticle {
         });
   }
 
-  private class Foo1 {
+  private class TupleApiKeyPostAllClaims {
     String apiKey;
     List<HttpResponse<Buffer>> postAllClaims;
 
-    Foo1(String apiKey, List<HttpResponse<Buffer>> postAllClaims) {
+    TupleApiKeyPostAllClaims(String apiKey, List<HttpResponse<Buffer>> postAllClaims) {
       this.apiKey = apiKey;
       this.postAllClaims = postAllClaims;
     }

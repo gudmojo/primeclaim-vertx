@@ -191,28 +191,30 @@ public class MainVerticle extends AbstractVerticle {
 
     router.route(HttpMethod.GET, "/user/:username").handler(routingContext -> {
       exceptionGuard(routingContext, () -> {
-        HttpServerResponse response = routingContext.response();
-        String sql =
-          "select username, isadmin, apikey " +
-            " from appuser u left join apikey on u.id = userid " +
-            " where username = ?";
-        JsonArray params = new JsonArray();
-        String username = routingContext.request().getParam("username");
-        params.add(username);
+        adminOnly(routingContext, () -> {
+          HttpServerResponse response = routingContext.response();
+          String sql =
+            "select username, isadmin, apikey " +
+              " from appuser u left join apikey on u.id = userid " +
+              " where username = ?";
+          JsonArray params = new JsonArray();
+          String username = routingContext.request().getParam("username");
+          params.add(username);
 
-        sqlClient.rxGetConnection().flatMap(connection ->
-          connection.rxQueryWithParams(sql, params).doAfterTerminate(connection::close))
-          .subscribe(result -> {
-            List<JsonObject> rows = result.getRows();
-            if (rows.isEmpty()) {
-              response.setStatusCode(404).end();
-            } else {
-              response.end(rows.get(0).encode());
-            }
-          }, err -> {
-            LOGGER.error("Exception in get user", err);
-            fail(routingContext);
-          });
+          sqlClient.rxGetConnection().flatMap(connection ->
+            connection.rxQueryWithParams(sql, params).doAfterTerminate(connection::close))
+            .subscribe(result -> {
+              List<JsonObject> rows = result.getRows();
+              if (rows.isEmpty()) {
+                response.setStatusCode(404).end();
+              } else {
+                response.end(rows.get(0).encode());
+              }
+            }, err -> {
+              LOGGER.error("Exception in get user", err);
+              fail(routingContext);
+            });
+        });
       });
     });
 
