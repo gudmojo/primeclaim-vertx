@@ -13,3 +13,5 @@ CREATE TABLE claim (
   prime BIGINT PRIMARY KEY,
   owner BIGSERIAL NOT NULL REFERENCES appuser
 );
+
+INSERT INTO appuser (id, username, isadmin) VALUES (0, 'admin', true);

@@ -41,6 +41,7 @@ public class TestMainVerticle {
   public static final String PG_USERNAME = "test";
   public static final String PG_PASSWORD = "test";
   public static final String PG_HOSTNAME = "localhost";
+  public static final String ADMIN_API_KEY = "bCmdRcFneSFjNL9u";
 
   private void assertEquals(VertxTestContext testContext, Object a, Object b) {
     testContext.verify(() -> org.junit.jupiter.api.Assertions.assertEquals(a, b));
@@ -61,6 +62,7 @@ public class TestMainVerticle {
         .put("postgres-database", PG_DATABASE)
         .put("postgres-username", PG_USERNAME)
         .put("postgres-password", PG_PASSWORD)
+        .put(ConfigKey.BOOTSTRAP_ADMIN_API_KEY, ADMIN_API_KEY)
       );
     Flyway flyway = Flyway.configure().dataSource(
       pgUrl,
@@ -92,7 +94,7 @@ public class TestMainVerticle {
     String username = "myname";
     newUser.put("username", username);
     newUser.put("isadmin", false);
-    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(postResult ->
+    client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser).flatMap(postResult ->
       client.get(HTTP_PORT, HOST, "/user/myname").rxSend())
       .flatMap(getUser ->
         client.get(HTTP_PORT, "localhost", "/ping?apikey=" + getUser.bodyAsJsonObject().getString("apikey")).rxSend())
@@ -157,7 +159,7 @@ public class TestMainVerticle {
     String username = "myname";
     newUser.put("username", username);
     newUser.put("isadmin", false);
-    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser).flatMap(postUser -> {
+    client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser).flatMap(postUser -> {
       assertEquals(testContext, 200, postUser.statusCode());
       return client.get(HTTP_PORT, HOST, "/user/" + username).rxSend();
     }).subscribe(getUser ->
@@ -180,7 +182,7 @@ public class TestMainVerticle {
     newUser.put("username", username);
     newUser.put("isadmin", false);
     WebClient client = WebClient.create(vertx, new WebClientOptions().setLogActivity(true));
-    client.post(HTTP_PORT, HOST, "/user").rxSendJsonObject(newUser)
+    client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser)
       .flatMap(createUser -> {
         assertEquals(testContext, 200, createUser.statusCode());
         return client.get(HTTP_PORT, HOST, "/user/johnny").rxSend();
