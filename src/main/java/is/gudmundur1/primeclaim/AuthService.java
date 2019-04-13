@@ -12,7 +12,7 @@ public class AuthService {
 
   private static Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
 
-  UserRepo userRepo;
+  private UserRepo userRepo;
 
   public AuthService(UserRepo userRepo) {
     this.userRepo = userRepo;
