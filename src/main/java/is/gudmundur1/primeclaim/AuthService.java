@@ -10,9 +10,9 @@ import java.util.function.Predicate;
 
 public class AuthService {
 
-  private static Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
 
-  private UserRepo userRepo;
+  private final UserRepo userRepo;
 
   public AuthService(UserRepo userRepo) {
     this.userRepo = userRepo;
@@ -60,8 +60,8 @@ public class AuthService {
   }
 
   private class AppUser {
-    String username;
-    boolean isAdmin;
+    final String username;
+    final boolean isAdmin;
 
     AppUser(JsonObject json) {
       this.username = json.getString("username");

@@ -9,9 +9,9 @@ import org.slf4j.LoggerFactory;
 
 public class ClaimService {
 
-  private static Logger LOGGER = LoggerFactory.getLogger(ClaimService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ClaimService.class);
 
-  private ClaimRepo claimRepo;
+  private final ClaimRepo claimRepo;
 
   public ClaimService(ClaimRepo claimRepo) {
     this.claimRepo = claimRepo;

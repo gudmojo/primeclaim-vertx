@@ -11,7 +11,7 @@ import java.util.List;
 
 public class UserRepo {
 
-  private SQLClient sqlClient;
+  private final SQLClient sqlClient;
 
   public UserRepo(SQLClient sqlClient) {
     this.sqlClient = sqlClient;
@@ -73,8 +73,8 @@ public class UserRepo {
   }
 
   private class TupleConnectionAndResultSet {
-    SQLConnection connection;
-    ResultSet resultSet;
+    final SQLConnection connection;
+    final ResultSet resultSet;
 
     TupleConnectionAndResultSet(SQLConnection connection, ResultSet resultSet) {
       this.connection = connection;

@@ -12,7 +12,7 @@ public class UserService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
 
-  private UserRepo userRepo;
+  private final UserRepo userRepo;
 
   public UserService(UserRepo userRepo) {
     this.userRepo = userRepo;

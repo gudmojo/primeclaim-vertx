@@ -10,7 +10,7 @@ import scala.collection.immutable.Map;
 
 public class ClaimRepo {
 
-  private SQLClient sqlClient;
+  private final SQLClient sqlClient;
 
   public ClaimRepo(SQLClient sqlClient) {
     this.sqlClient = sqlClient;

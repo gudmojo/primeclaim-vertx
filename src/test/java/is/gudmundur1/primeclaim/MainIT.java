@@ -31,7 +31,7 @@ public class MainIT {
   @Test
   @DisplayName("Should start a Web Server on port")
   @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void start_http_server(Vertx vertx, VertxTestContext testContext) throws Throwable {
+  void start_http_server(Vertx vertx, VertxTestContext testContext) {
     WebClient client = WebClient.create(vertx);
     client.get(HTTP_PORT, "localhost", "/").rxSend().subscribe(getRoot ->
       testContext.verify(() -> {

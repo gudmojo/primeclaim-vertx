@@ -128,8 +128,8 @@ public class ClaimIT {
   }
 
   private class TupleApiKeyPostAllClaims {
-    String apiKey;
-    List<HttpResponse<Buffer>> postAllClaims;
+    final String apiKey;
+    final List<HttpResponse<Buffer>> postAllClaims;
 
     TupleApiKeyPostAllClaims(String apiKey, List<HttpResponse<Buffer>> postAllClaims) {
       this.apiKey = apiKey;
