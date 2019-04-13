@@ -2,7 +2,6 @@
 
 A toy project to play around with Vert.x
 
-    mvn flyway:migrate -Dflyway.url=jdbc:postgresql://localhost/postgres -Dflyway.user=postgres -Dflyway.password=mysecretpassword
 
 This application was generated using http://start.vertx.io
 
@@ -21,6 +20,15 @@ To package your application:
 To run your application:
 ```
 ./mvnw clean compile exec:java
+
+or
+
+java -jar target/primeclaim-1.0.0-SNAPSHOT-fat.jar -conf $(pwd)/primeclaim.conf
+
+but first you will need some preparation:
+
+docker run -d --name some-postgres -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres
+mvn flyway:migrate -Dflyway.url=jdbc:postgresql://localhost/postgres -Dflyway.user=postgres -Dflyway.password=mysecretpassword
 ```
 
 == Help
