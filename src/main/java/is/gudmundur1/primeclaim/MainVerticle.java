@@ -39,7 +39,7 @@ public class MainVerticle extends AbstractVerticle {
     AuthService authService = new AuthService(userRepo);
     ClaimRepo claimRepo = new ClaimRepo(sqlClient);
     ClaimService claimService = new ClaimService(claimRepo);
-    UserService userService = new UserService(sqlClient);
+    UserService userService = new UserService(userRepo);
 
     Router router = Router.router(vertx);
     router.route().handler(BodyHandler.create());
@@ -68,7 +68,7 @@ public class MainVerticle extends AbstractVerticle {
         authService.adminOnly(routingContext, () ->
           userService.getUser(routingContext))));
 
-    userService.bootstrapAdminApiKey(config().getString(ConfigKey.BOOTSTRAP_ADMIN_API_KEY));
+    userRepo.bootstrapAdminApiKey(config().getString(ConfigKey.BOOTSTRAP_ADMIN_API_KEY));
 
     Integer httpPort = config().getInteger(ConfigKey.LISTEN_PORT);
     vertx.createHttpServer().requestHandler(router).listen(httpPort, http -> {
