@@ -1,7 +1,8 @@
 = Primeclaim
 
-A toy project to play around with Vert.x
+A toy project to play around with Vert.x. This application demonstrates how you can build a non-blocking REST api server.
 
+Concept: It's a simple api where users can claim prime numbers. Their username is associated with each prime they claim.
 
 This application was generated using http://start.vertx.io
 
