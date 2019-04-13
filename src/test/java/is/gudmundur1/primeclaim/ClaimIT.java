@@ -2,7 +2,6 @@ package is.gudmundur1.primeclaim;
 
 import io.reactivex.Observable;
 import io.reactivex.Single;
-import io.vertx.core.DeploymentOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClientOptions;
@@ -13,73 +12,29 @@ import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.core.buffer.Buffer;
 import io.vertx.reactivex.ext.web.client.HttpResponse;
 import io.vertx.reactivex.ext.web.client.WebClient;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static is.gudmundur1.primeclaim.IntegrationTestUtil.ADMIN_API_KEY;
+import static is.gudmundur1.primeclaim.IntegrationTestUtil.HOST;
+import static is.gudmundur1.primeclaim.IntegrationTestUtil.HTTP_PORT;
+import static is.gudmundur1.primeclaim.TestUtil.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(VertxExtension.class)
 
-public class TestMainVerticle {
-
-  public static final int HTTP_PORT = 8889;
-  public static final String HOST = "localhost";
-  public static final String PG_DATABASE = "test";
-  public static final String PG_USERNAME = "test";
-  public static final String PG_PASSWORD = "test";
-  public static final String PG_HOSTNAME = "localhost";
-  public static final String ADMIN_API_KEY = "bCmdRcFneSFjNL9u";
-
-  private void assertEquals(VertxTestContext testContext, Object a, Object b) {
-    testContext.verify(() -> org.junit.jupiter.api.Assertions.assertEquals(a, b));
-  }
+public class ClaimIT {
 
   @BeforeEach
   void deploy_verticle(Vertx vertx, VertxTestContext testContext) {
-    GenericContainer postgresContainer = new PostgreSQLContainer()
-      .withTmpFs(Collections.singletonMap("/var/lib/pgsql/data", "rw"));
-    postgresContainer.start();
-    Integer pgPort = postgresContainer.getMappedPort(5432);
-    String pgUrl = "jdbc:postgresql://" + PG_HOSTNAME + ":" + pgPort + "/" + PG_DATABASE;
-    DeploymentOptions options = new DeploymentOptions()
-      .setConfig(new JsonObject()
-        .put(ConfigKey.LISTEN_PORT, HTTP_PORT)
-        .put(ConfigKey.POSTGRES_HOST, PG_HOSTNAME)
-        .put(ConfigKey.POSTGRES_PORT, pgPort)
-        .put(ConfigKey.POSTGRES_DATABASE, PG_DATABASE)
-        .put(ConfigKey.POSTGRES_USER, PG_USERNAME)
-        .put(ConfigKey.POSTGRES_PASSWORD, PG_PASSWORD)
-        .put(ConfigKey.BOOTSTRAP_ADMIN_API_KEY, ADMIN_API_KEY)
-      );
-    Flyway flyway = Flyway.configure().dataSource(
-      pgUrl,
-      PG_USERNAME,
-      PG_PASSWORD).load();
-    flyway.migrate();
-    vertx.deployVerticle(new MainVerticle(), options, testContext.succeeding(id -> testContext.completeNow()));
-  }
-
-  @Test
-  @DisplayName("Should start a Web Server on port")
-  @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void start_http_server(Vertx vertx, VertxTestContext testContext) throws Throwable {
-    WebClient client = WebClient.create(vertx);
-    client.get(HTTP_PORT, "localhost", "/").rxSend().subscribe(getRoot ->
-      testContext.verify(() -> {
-        assertTrue(getRoot.statusCode() == 200);
-        assertTrue(getRoot.body().toString().contains("hello"));
-        testContext.completeNow();
-      }));
+    IntegrationTestUtil.deploy(vertx, testContext);
   }
 
   @Test
@@ -111,29 +66,6 @@ public class TestMainVerticle {
       testContext.verify(() -> assertTrue(getClaims.body() == null));
       testContext.completeNow();
     });
-  }
-
-  @Test
-  @DisplayName("create user")
-  @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
-  void create_user(Vertx vertx, VertxTestContext testContext) {
-    WebClient client = WebClient.create(vertx);
-    JsonObject newUser = new JsonObject();
-    String username = "myname";
-    newUser.put("username", username);
-    newUser.put("isadmin", false);
-    client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser).flatMap(postUser -> {
-      assertEquals(testContext, 200, postUser.statusCode());
-      return client.get(HTTP_PORT, HOST, "/user/" + username + "?apikey=" + ADMIN_API_KEY).rxSend();
-    }).subscribe(getUser ->
-      testContext.verify(() -> {
-        assertEquals(testContext, 200, getUser.statusCode());
-        JsonObject json = getUser.bodyAsJsonObject();
-        assertEquals(testContext, username, json.getString("username"));
-        assertEquals(testContext, false, json.getBoolean("isadmin"));
-        assertTrue(json.getString("apikey").matches("[A-Za-z0-9]+"));
-        testContext.completeNow();
-      }));
   }
 
   @Test
