@@ -82,6 +82,7 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   private void getRoot(RoutingContext routingContext) {
+    LOGGER.info("GET /");
     routingContext.response()
       .putHeader("content-type", "text/plain")
       .end("hello");
