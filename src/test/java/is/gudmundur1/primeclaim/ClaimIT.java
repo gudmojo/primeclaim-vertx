@@ -110,6 +110,23 @@ public class ClaimIT {
         });
   }
 
+  @Test
+  @DisplayName("claim same prime twice")
+  @Timeout(value = 60, timeUnit = TimeUnit.SECONDS)
+  void claim_same_prime(Vertx vertx, VertxTestContext testContext) {
+    WebClient client = WebClient.create(vertx, new WebClientOptions().setLogActivity(true));
+    JsonObject req = new JsonObject();
+    req.put("prime", 1);
+    req.put("username", "admin");
+    client.post(HTTP_PORT, HOST, "/claims?apikey=" + ADMIN_API_KEY).rxSendJsonObject(req).flatMap(postClaim1 -> {
+      assertEquals(testContext, 200, postClaim1.statusCode());
+      return client.post(HTTP_PORT, HOST, "/claims?apikey=" + ADMIN_API_KEY).rxSendJsonObject(req);
+    }).subscribe(postClaim2 -> {
+      assertEquals(testContext, 500, postClaim2.statusCode());
+      testContext.completeNow();
+    });
+  }
+
   private class TupleApiKeyPostAllClaims {
     String apiKey;
     List<HttpResponse<Buffer>> postAllClaims;

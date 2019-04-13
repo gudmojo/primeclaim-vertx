@@ -5,6 +5,8 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.ext.sql.ResultSet;
 import io.vertx.ext.sql.UpdateResult;
 import io.vertx.reactivex.ext.sql.SQLClient;
+import com.github.mauricio.async.db.postgresql.exceptions.GenericDatabaseException;
+import scala.collection.immutable.Map;
 
 public class ClaimRepo {
 
@@ -25,6 +27,11 @@ public class ClaimRepo {
       connection.rxUpdateWithParams(sql, params).doAfterTerminate(connection::close));
   }
 
+  private String getSqlState(Map<Object, String> fields) {
+    char key = 'C'; // Scala library weirdness. Figured out via debugger
+    return fields.get(key).get();
+  }
+
   public Single<ResultSet> getClaims() {
     return sqlClient.rxGetConnection().flatMap(connection -> {
       String sql = "select prime, username as owner from claim c left join appuser u on c.owner = u.id";
@@ -33,4 +40,15 @@ public class ClaimRepo {
 
   }
 
+  public Throwable mapErrors(Throwable throwable) {
+    if (throwable instanceof GenericDatabaseException) {
+      GenericDatabaseException ex = (GenericDatabaseException) throwable;
+      Map<Object, String> fields = ex.errorMessage().fields();
+      String sqlstate = getSqlState(fields);
+      if ("23505".equals(sqlstate)) {
+        return new UniqueViolationException();
+      }
+    }
+    return throwable;
+  }
 }

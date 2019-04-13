@@ -186,3 +186,4 @@ nbdist/
 
 ### Extra ###
 .mvn
+gatling-charts-highcharts-bundle-*

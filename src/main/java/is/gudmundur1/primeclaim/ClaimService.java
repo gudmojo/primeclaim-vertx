@@ -29,8 +29,14 @@ public class ClaimService {
         LOGGER.info("Success: Create claim");
         routingContext.response().end();
       }, err -> {
-        LOGGER.error("Exception executing insert", err);
-        WebUtil.fail(routingContext);
+        Throwable mappedError = claimRepo.mapErrors(err);
+        if (mappedError instanceof UniqueViolationException) {
+          LOGGER.info("Tried to post an already claimed prime");
+          WebUtil.fail(routingContext);
+        } else {
+          LOGGER.error("Exception executing insert", mappedError);
+          WebUtil.fail(routingContext);
+        }
       });
   }
 
