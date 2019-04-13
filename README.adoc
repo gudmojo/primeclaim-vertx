@@ -12,21 +12,23 @@ To launch your tests:
 ./mvnw clean test
 ```
 
-To package your application:
+To package the application:
 ```
 ./mvnw clean package
 ```
 
-To run your application:
+To run the application:
 ```
-./mvnw clean compile exec:java
+java -jar target/primeclaim-1.0.0-SNAPSHOT-fat.jar -conf $(pwd)/primeclaim.conf
 
 or
 
-java -jar target/primeclaim-1.0.0-SNAPSHOT-fat.jar -conf $(pwd)/primeclaim.conf
+./mvnw clean compile exec:java
+```
 
 but first you will need some preparation:
 
+```
 docker run -d --name some-postgres -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpassword postgres
 mvn flyway:migrate -Dflyway.url=jdbc:postgresql://localhost/postgres -Dflyway.user=postgres -Dflyway.password=mysecretpassword
 ```
