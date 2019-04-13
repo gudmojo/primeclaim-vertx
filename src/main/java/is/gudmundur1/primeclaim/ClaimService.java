@@ -20,7 +20,7 @@ public class ClaimService {
   public void createClaim(RoutingContext routingContext) {
     JsonObject bodyAsJson = routingContext.getBodyAsJson();
     Integer prime = bodyAsJson.getInteger("prime");
-    String username = bodyAsJson.getString("username"); // TODO authenticate
+    String username = bodyAsJson.getString("username"); // TODO user the current user
     if (!PrimeUtil.isPrime(prime)) {
       routingContext.response().setStatusCode(400).end();
     }
