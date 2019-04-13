@@ -7,6 +7,8 @@ import io.vertx.reactivex.ext.web.RoutingContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.net.HttpURLConnection.HTTP_BAD_REQUEST;
+
 public class ClaimService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClaimService.class);
@@ -22,7 +24,7 @@ public class ClaimService {
     Integer prime = bodyAsJson.getInteger("prime");
     String username = bodyAsJson.getString("username"); // TODO user the current user
     if (!PrimeUtil.isPrime(prime)) {
-      routingContext.response().setStatusCode(400).end();
+      routingContext.response().setStatusCode(HTTP_BAD_REQUEST).end();
     }
     claimRepo.insertClaim(prime, username)
       .subscribe(result -> {

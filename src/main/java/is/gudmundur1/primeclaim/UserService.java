@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+
 public class UserService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
@@ -40,7 +42,7 @@ public class UserService {
     userRepo.getUser(username).subscribe(result -> {
         List<JsonObject> rows = result.getRows();
         if (rows.isEmpty()) {
-          response.setStatusCode(404).end();
+          response.setStatusCode(HTTP_NOT_FOUND).end();
         } else {
           response.end(rows.get(0).encode());
         }

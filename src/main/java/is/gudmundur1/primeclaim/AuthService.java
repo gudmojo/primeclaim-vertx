@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.function.Predicate;
 
+import static java.net.HttpURLConnection.HTTP_FORBIDDEN;
+
 public class AuthService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
@@ -38,7 +40,7 @@ public class AuthService {
     List<String> apikeyList = routingContext.queryParam("apikey");
     if (apikeyList.isEmpty()) {
       LOGGER.warn("No api key");
-      routingContext.response().setStatusCode(403).end();
+      routingContext.response().setStatusCode(HTTP_FORBIDDEN).end();
       return;
     }
 
@@ -46,16 +48,16 @@ public class AuthService {
       List<JsonObject> rows = queryResult.getRows();
       if (rows.isEmpty()) {
         LOGGER.warn("Invalid api key");
-        routingContext.response().setStatusCode(403).end();
+        routingContext.response().setStatusCode(HTTP_FORBIDDEN).end();
       } else if (!predicate.test(new AppUser(rows.get(0)))) {
         LOGGER.warn("Bad user");
-        routingContext.response().setStatusCode(403).end();
+        routingContext.response().setStatusCode(HTTP_FORBIDDEN).end();
       } else {
         fn.run();
       }
     }, err -> {
       LOGGER.error("Error in loggedInOnly", err);
-      routingContext.response().setStatusCode(403).end();
+      routingContext.response().setStatusCode(HTTP_FORBIDDEN).end();
     });
   }
 

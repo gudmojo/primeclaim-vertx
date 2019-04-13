@@ -26,6 +26,9 @@ import static is.gudmundur1.primeclaim.IntegrationTestUtil.ADMIN_API_KEY;
 import static is.gudmundur1.primeclaim.IntegrationTestUtil.HOST;
 import static is.gudmundur1.primeclaim.IntegrationTestUtil.HTTP_PORT;
 import static is.gudmundur1.primeclaim.TestUtil.assertEquals;
+import static java.net.HttpURLConnection.HTTP_FORBIDDEN;
+import static java.net.HttpURLConnection.HTTP_INTERNAL_ERROR;
+import static java.net.HttpURLConnection.HTTP_OK;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(VertxExtension.class)
@@ -47,7 +50,7 @@ public class ClaimIT {
     claim.put("prime", 3);
     client.post(HTTP_PORT, "localhost", "/claims").rxSendJsonObject(claim).subscribe(postClaim ->
       testContext.verify(() -> {
-        assertTrue(postClaim.statusCode() == 403);
+        assertTrue(postClaim.statusCode() == HTTP_FORBIDDEN);
         assertTrue(postClaim.body() == null);
         testContext.completeNow();
       }));
@@ -62,7 +65,7 @@ public class ClaimIT {
     claim.put("username", "johnny");
     claim.put("prime", 3);
     client.get(HTTP_PORT, "localhost", "/claims").rxSend().subscribe(getClaims -> {
-      assertEquals(testContext, 403, getClaims.statusCode());
+      assertEquals(testContext, HTTP_FORBIDDEN, getClaims.statusCode());
       testContext.verify(() -> assertTrue(getClaims.body() == null));
       testContext.completeNow();
     });
@@ -79,11 +82,11 @@ public class ClaimIT {
     WebClient client = WebClient.create(vertx, new WebClientOptions().setLogActivity(true));
     client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser)
       .flatMap(createUser -> {
-        assertEquals(testContext, 200, createUser.statusCode());
+        assertEquals(testContext, HTTP_OK, createUser.statusCode());
         return client.get(HTTP_PORT, HOST, "/user/johnny?apikey=" + ADMIN_API_KEY).rxSend();
       })
       .flatMap(getUser -> {
-        assertEquals(testContext, 200, getUser.statusCode());
+        assertEquals(testContext, HTTP_OK, getUser.statusCode());
         String apikey = getUser.bodyAsJsonObject().getString("apikey");
         return Single.zip(Single.just(apikey), Observable.fromArray(new Integer[]{1, 2, 3, 5, 7})
           .flatMapSingle(prime -> {
@@ -95,7 +98,7 @@ public class ClaimIT {
           }).toList(), TupleApiKeyPostAllClaims::new);
       })
       .flatMap(tuple -> {
-        tuple.postAllClaims.forEach(postClaim -> assertEquals(testContext, 200, postClaim.statusCode()));
+        tuple.postAllClaims.forEach(postClaim -> assertEquals(testContext, HTTP_OK, postClaim.statusCode()));
         return client.get(HTTP_PORT, HOST, "/claims?apikey=" + tuple.apiKey).rxSend();
       }).subscribe(getClaims -> {
           JsonArray list = getClaims.bodyAsJsonArray();
@@ -119,10 +122,10 @@ public class ClaimIT {
     req.put("prime", 1);
     req.put("username", "admin");
     client.post(HTTP_PORT, HOST, "/claims?apikey=" + ADMIN_API_KEY).rxSendJsonObject(req).flatMap(postClaim1 -> {
-      assertEquals(testContext, 200, postClaim1.statusCode());
+      assertEquals(testContext, HTTP_OK, postClaim1.statusCode());
       return client.post(HTTP_PORT, HOST, "/claims?apikey=" + ADMIN_API_KEY).rxSendJsonObject(req);
     }).subscribe(postClaim2 -> {
-      assertEquals(testContext, 500, postClaim2.statusCode());
+      assertEquals(testContext, HTTP_INTERNAL_ERROR, postClaim2.statusCode());
       testContext.completeNow();
     });
   }

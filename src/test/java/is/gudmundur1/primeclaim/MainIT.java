@@ -17,6 +17,7 @@ import static is.gudmundur1.primeclaim.IntegrationTestUtil.ADMIN_API_KEY;
 import static is.gudmundur1.primeclaim.IntegrationTestUtil.HOST;
 import static is.gudmundur1.primeclaim.IntegrationTestUtil.HTTP_PORT;
 import static is.gudmundur1.primeclaim.TestUtil.assertEquals;
+import static java.net.HttpURLConnection.HTTP_OK;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(VertxExtension.class)
@@ -35,7 +36,7 @@ public class MainIT {
     WebClient client = WebClient.create(vertx);
     client.get(HTTP_PORT, "localhost", "/").rxSend().subscribe(getRoot ->
       testContext.verify(() -> {
-        assertTrue(getRoot.statusCode() == 200);
+        assertTrue(getRoot.statusCode() == HTTP_OK);
         assertTrue(getRoot.body().toString().contains("hello"));
         testContext.completeNow();
       }));
@@ -51,11 +52,11 @@ public class MainIT {
     newUser.put("username", username);
     newUser.put("isadmin", false);
     client.post(HTTP_PORT, HOST, "/user?apikey=" + ADMIN_API_KEY).rxSendJsonObject(newUser).flatMap(postUser -> {
-      assertEquals(testContext, 200, postUser.statusCode());
+      assertEquals(testContext, HTTP_OK, postUser.statusCode());
       return client.get(HTTP_PORT, HOST, "/user/" + username + "?apikey=" + ADMIN_API_KEY).rxSend();
     }).subscribe(getUser ->
       testContext.verify(() -> {
-        assertEquals(testContext, 200, getUser.statusCode());
+        assertEquals(testContext, HTTP_OK, getUser.statusCode());
         JsonObject json = getUser.bodyAsJsonObject();
         assertEquals(testContext, username, json.getString("username"));
         assertEquals(testContext, false, json.getBoolean("isadmin"));
