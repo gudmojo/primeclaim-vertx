@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.reactivex.core.AbstractVerticle;
+import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.ext.asyncsql.PostgreSQLClient;
 import io.vertx.reactivex.ext.sql.SQLClient;
 import io.vertx.reactivex.ext.web.Router;
@@ -15,6 +16,11 @@ import org.slf4j.LoggerFactory;
 public class MainVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MainVerticle.class);
+
+  // Added a main entry point to make it work with jib
+  public static void main(String[] args) {
+    Vertx.vertx().deployVerticle(new MainVerticle());
+  }
 
   private void exceptionGuard(RoutingContext routingContext, Runnable fn) {
     try {

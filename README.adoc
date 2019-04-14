@@ -34,6 +34,13 @@ docker run -d --name some-postgres -p 5432:5432 -e POSTGRES_PASSWORD=mysecretpas
 mvn flyway:migrate -Dflyway.url=jdbc:postgresql://localhost/postgres -Dflyway.user=postgres -Dflyway.password=mysecretpassword
 ```
 
+To build and push a docker image:
+```
+export DOCKERHUB_USERNAME=...
+export DOCKERHUB_PASSWORD=...
+mvn compile jib:build
+```
+
 == Help
 
 * https://vertx.io/docs/[Vert.x Documentation]
